@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "demo-customer-age-postcode",
+  "question": "Get customer IDs and names for customers aged 30 to 35 in postcode 3000.",
+  "sql": "SELECT CM.CUSTOMER_ID,\n       CM.CUSTOMER_NAME\nFROM APP.CUSTOMER_MASTER AS CM\nWHERE CM.AGE BETWEEN 30 AND 35\n  AND CM.RESIDENTIAL_POSTCODE = '3000'\nORDER BY CM.CUSTOMER_ID",
+  "domain": "customer",
+  "tables": [
+    "APP.CUSTOMER_MASTER"
+  ],
+  "businessRuleIds": [
+    "customer-search-rules"
+  ],
+  "assumptions": [
+    "\"Customers\" means current customers in APP.CUSTOMER_MASTER (default table rule).",
+    "\"Aged 30 to 35\" includes both endpoints (inclusive age-range rule).",
+    "Postcode 3000 is compared as the string literal '3000'.",
+    "No STATUS filter is applied because STATUS values are not defined."
+  ],
+  "tags": [
+    "customer",
+    "age",
+    "age-range",
+    "postcode",
+    "demo"
+  ],
+  "notes": "FICTIONAL demo seed. Not reviewed by anyone. Use \"npm run review -- seed-demo\" to practise the review workflow.",
+  "contextVersion": "demo-2026-10-13.1",
+  "createdAt": "2026-10-13T00:00:00.000Z",
+  "submittedVia": "demo-seed",
+  "fingerprint": "016bb61b5a2070ded7d3fc2eaac4aa1bb969ceae0c6af0e347d513476fcd19b3",
+  "fictional": true,
+  "advisoryLint": {
+    "label": "advisory-only regex checks; not a Db2 parser and not proof of validity or safety",
+    "warnings": []
+  },
+  "status": "pending",
+  "validationStatus": "pending_human_review",
+  "review": null
+}

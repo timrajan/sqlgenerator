@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "sqlgenerator": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${CLAUDE_PROJECT_DIR:-.}/dist/server.js"],
+      "env": {}
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "sqlgenerator",
+  "version": "1.0.0",
+  "description": "Local MCP server supplying Db2 schema, business rules and human-reviewed SQL examples for AI-assisted SQL generation (no database access)",
+  "main": "dist/server.js",
+  "scripts": {
+    "test": "node --import tsx --test \"tests/unit/**/*.test.ts\"",
+    "start": "node dist/server.js",
+    "dev": "node --import tsx src/server.ts",
+    "build": "node node_modules/typescript/bin/tsc -p tsconfig.build.json",
+    "typecheck": "node node_modules/typescript/bin/tsc -p tsconfig.json",
+    "test:smoke": "npm run build && node --import tsx --test \"tests/integration/**/*.test.ts\"",
+    "test:all": "npm run typecheck && npm test && npm run test:smoke",
+    "prereview": "npm run --silent build",
+    "review": "node dist/cli/review.js"
+  },
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "private": "true",
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "UNLICENSED"
+}
