@@ -1,11 +1,54 @@
 # sqlgenerator
 
+**Ask a business question in plain English. Get Db2 SQL that follows your
+team's own rules, without waiting for the one person who knows the database.**
+
+## The problem
+
+Someone asks a simple-sounding question: *"How many active customers in
+postcode 2020 are over 40?"*
+
+Answering it is rarely simple. The data is spread across many tables with
+cryptic names. You need to know which table holds the customer, which holds
+the address, how they join, and which rows count as "active". You also need
+the unwritten rules: a column that looks right but is out of date, a status
+code that means something special, a join that quietly doubles every row.
+
+That knowledge usually lives in one or two people's heads. Every new question
+goes into their queue. Developers, testers, and analysts wait. The experts
+spend their days answering the same kinds of questions instead of doing their
+own work. When they go on leave, the answers stop.
+
+## The idea
+
+Writing the SQL isn't the hard part. Once you know the tables, how they
+connect, and the business rules, the query almost writes itself. The hard
+part is **knowing the context**.
+
+So write that context down once, as plain files:
+
+- **The database structure:** the table definitions.
+- **The business rules:** what "active customer" means, which columns to
+  trust, which joins to avoid.
+- **Good past queries:** examples that an expert has reviewed and approved.
+
+Then let an AI assistant you already use (GitHub Copilot or Claude Code) read
+that context and write the SQL for you. It shows its working: the tables and
+rules it used, the assumptions it made, and where it got them from. When
+something is unclear, it asks you instead of guessing.
+
+The expert's job changes from *writing every query* to *reviewing the
+knowledge once*. Approved queries are reused next time, so the system gets
+better with every question.
+
+![sqlgenerator workflow: business question to Db2 SQL](docs/images/sqlgenerator-workflow.gif)
+
+## What this repo is
+
 A local **MCP server** that helps AI coding assistants (Claude Code, GitHub
 Copilot in VS Code) write **Db2 SQL from business questions**. It does this by
 supplying your schema definitions, business rules, and human-reviewed SQL
 examples.
-
-![sqlgenerator workflow: business question to Db2 SQL](docs/images/sqlgenerator-workflow.gif)
 
 - The **AI client writes the SQL.** This server only provides context.
 - **No database access.** No Db2 connection, drivers, credentials, SQL execution, or EXPLAIN.
