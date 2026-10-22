@@ -5,6 +5,8 @@ Copilot in VS Code) write **Db2 SQL from business questions**. It does this by
 supplying your schema definitions, business rules, and human-reviewed SQL
 examples.
 
+![sqlgenerator workflow: business question to Db2 SQL](docs/images/sqlgenerator-workflow.gif)
+
 - The **AI client writes the SQL.** This server only provides context.
 - **No database access.** No Db2 connection, drivers, credentials, SQL execution, or EXPLAIN.
 - **No extra LLM.** No API keys, LangChain, Ollama, embeddings, or web UI.
