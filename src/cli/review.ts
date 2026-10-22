@@ -109,6 +109,10 @@ async function main(argv: string[]): Promise<number> {
     }
     case 'seed-demo': {
       const ids = await review.seedDemo();
+      if (ids.length === 0) {
+        out('No demo examples found in context/examples/demo/. Nothing to seed.');
+        return 0;
+      }
       out(`Created ${ids.length} FICTIONAL pending example(s): ${ids.join(', ')}`);
       out('Review them with "npm run review -- show <id>" and approve or reject with your own name.');
       return 0;

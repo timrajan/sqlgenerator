@@ -4,3 +4,6 @@ dist/
 # Local example-store lock directory and in-flight temp files
 context/examples/.lock/
 context/examples/**/.*.tmp-*
+
+# macOS folder metadata
+.DS_Store

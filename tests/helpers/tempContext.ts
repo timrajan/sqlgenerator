@@ -17,14 +17,17 @@ export interface TempContext {
   cleanup(): Promise<void>;
 }
 
+/** The fictional demo context the tests run against. Independent of `context/`, which users replace. */
+export const FIXTURE_CONTEXT_DIR = path.join(PROJECT_ROOT, 'tests', 'fixtures', 'context');
+
 /**
- * Copies the repository's demo context (manifest, schema, rules, demo seed)
- * into a fresh temp directory. Real example storage is never touched.
+ * Copies the test fixture context (manifest, schema, rules, demo seed) into a
+ * fresh temp directory. The project's real `context/` is never read or touched.
  */
 export async function makeTempContext(): Promise<TempContext> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sqlgen-test-'));
   const contextDir = path.join(root, 'context');
-  const src = path.join(PROJECT_ROOT, 'context');
+  const src = FIXTURE_CONTEXT_DIR;
   await fs.cp(src, contextDir, {
     recursive: true,
     filter: (p) => {

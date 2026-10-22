@@ -69,16 +69,19 @@ weighted fields, ties broken by ID, and limits clamped to `SQLGEN_MAX_RESULTS`
 ## Setup
 
 ```bash
+git clone https://github.com/timrajan/sqlgenerator.git
 cd sqlgenerator
+node --version    # must print v22 or newer (see Troubleshooting if not)
 npm ci            # or: npm install
 npm run build
 npm run test:all  # typecheck + unit tests + MCP smoke test
 ```
 
-The project includes `.npmrc` with `bin-links=false`. That's because this
-copy lives on an exFAT drive, which can't hold the symlinks npm normally
+The project includes `.npmrc` with `bin-links=false`, so `npm install` also
+works on exFAT or FAT drives, which can't hold the symlinks npm normally
 creates in `node_modules/.bin`. All npm scripts call tools as
 `node node_modules/...`, so they work with or without bin links on any OS.
+Keep the setting; it does no harm on other drives.
 
 ### npm scripts
 
@@ -122,19 +125,164 @@ All paths in the manifest are relative to `context/`. The server rejects
 absolute paths, `..` traversal, and symlinks that resolve outside the context
 directory. Tools accept only logical IDs and table names, never file paths.
 
+## Demo schema (FICTIONAL)
+
+The bundled `customer` domain has five tables in schema `APP`. It is sample
+data for trying the server, not a real system. The source of truth is
+`context/schema/customer/*.sql` and
+`context/business-rules/customer/customer-table-relationships.md`. There is
+also a diagram in [`docs/erd.md`](docs/erd.md).
+
+**`APP.CUSTOMER_MASTER`**: one row per current customer. This is the default table for customer questions.
+
+| Column | Type | Null? | Notes |
+|---|---|---|---|
+| `CUSTOMER_ID` | BIGINT | NOT NULL | **PK** |
+| `CUSTOMER_NAME` | VARCHAR(200) | NOT NULL | Full name |
+| `AGE` | SMALLINT | | Completed years |
+| `RESIDENTIAL_POSTCODE` | VARCHAR(10) | | String; keep leading zeros |
+| `STATUS` | VARCHAR(20) | NOT NULL | Values not defined |
+
+**`APP.CUSTOMER_HISTORY`**: one row per customer version.
+
+| Column | Type | Null? | Notes |
+|---|---|---|---|
+| `CUSTOMER_ID` | BIGINT | NOT NULL | **PK** (part 1) |
+| `VERSION_NO` | INTEGER | NOT NULL | **PK** (part 2), starts at 1 |
+| `CUSTOMER_NAME` | VARCHAR(200) | NOT NULL | |
+| `AGE` | SMALLINT | | As recorded in this version |
+| `RESIDENTIAL_POSTCODE` | VARCHAR(10) | | |
+| `STATUS` | VARCHAR(20) | NOT NULL | |
+| `VALID_FROM` | TIMESTAMP | NOT NULL | Start of validity (inclusive) |
+| `VALID_TO` | TIMESTAMP | | End (exclusive); NULL for the latest version |
+
+**`APP.CUSTOMER_APPLICATIONS`**: one row per application. Applicants are not necessarily customers.
+
+| Column | Type | Null? | Notes |
+|---|---|---|---|
+| `APPLICATION_ID` | BIGINT | NOT NULL | **PK** |
+| `APPLICANT_NAME` | VARCHAR(200) | NOT NULL | |
+| `AGE` | SMALLINT | | At application date |
+| `RESIDENTIAL_POSTCODE` | VARCHAR(10) | | |
+| `APPLICATION_DATE` | DATE | NOT NULL | |
+| `APPLICATION_STATUS` | VARCHAR(20) | NOT NULL | |
+| `CUSTOMER_ID` | BIGINT | | **FK** → `CUSTOMER_MASTER`; NULL until the applicant becomes a customer |
+
+**`APP.CUSTOMER_CONTACTS`**: one row per contact, with many contacts per customer.
+
+| Column | Type | Null? | Notes |
+|---|---|---|---|
+| `CONTACT_ID` | BIGINT | NOT NULL | **PK** |
+| `CUSTOMER_ID` | BIGINT | NOT NULL | **FK** → `CUSTOMER_MASTER` |
+| `CONTACT_NAME` | VARCHAR(200) | NOT NULL | |
+| `CONTACT_ROLE` | VARCHAR(50) | | Free text; values not defined |
+| `EMAIL_ADDRESS` | VARCHAR(254) | | |
+| `PHONE_NUMBER` | VARCHAR(30) | | |
+
+**`APP.CUSTOMER_ARCHIVE`**: one row per former customer. Archived customers no longer appear in `CUSTOMER_MASTER`.
+
+| Column | Type | Null? | Notes |
+|---|---|---|---|
+| `CUSTOMER_ID` | BIGINT | NOT NULL | **PK** |
+| `CUSTOMER_NAME` | VARCHAR(200) | NOT NULL | |
+| `AGE` | SMALLINT | | At time of archiving |
+| `RESIDENTIAL_POSTCODE` | VARCHAR(10) | | At time of archiving |
+| `STATUS` | VARCHAR(20) | NOT NULL | |
+| `ARCHIVED_DATE` | DATE | NOT NULL | |
+| `ARCHIVE_REASON` | VARCHAR(200) | | |
+
+### Relationships
+
+```
+CUSTOMER_MASTER ──1:N──► CUSTOMER_CONTACTS       (FK CUSTOMER_ID)
+CUSTOMER_MASTER ──1:N──► CUSTOMER_APPLICATIONS   (FK CUSTOMER_ID, nullable)
+CUSTOMER_MASTER ┄┄1:N┄┄► CUSTOMER_HISTORY        (logical link, no FK)
+CUSTOMER_ARCHIVE ┄1:N┄┄► CUSTOMER_HISTORY        (logical link, no FK)
+CUSTOMER_ARCHIVE ✗ CUSTOMER_MASTER               (no link: archived customers left master)
+```
+
+- **Contacts repeat customer rows.** Joining contacts to master gives one row per contact, so count customers with `COUNT(DISTINCT CUSTOMER_ID)`.
+- **History at a point in time T:** `VALID_FROM <= T AND (VALID_TO IS NULL OR VALID_TO > T)`.
+- **Applicants are not customers.** Don't count them as customers.
+
+If you change the DDL or relationship rules, update this section and `docs/erd.md` to match.
+When you [replace the demo](#replacing-the-demo-context-with-real-documents),
+replace or remove this section. The tests keep their own copy of this demo in
+`tests/fixtures/context/`.
+
 ## Replacing the demo context with real documents
 
-1. Delete or move `context/schema/customer/`, `context/business-rules/customer/`, and `context/examples/demo/*`.
-2. Add your DDL files (one table per file, exact identifier casing) and your Markdown rule documents.
-3. Rewrite `context/manifest.json`:
-   - Set `"fictional": false` and a new `contextVersion`.
-   - Set `db2.platform`/`version` if known; leave it `"unspecified"` otherwise.
-   - List every domain, table and document.
-4. Run `npm test` (it uses the demo files, so update or skip the tests that rely on them), then restart your MCP client.
-5. Check that the data you put in `context/` is approved for use with your AI client (see [Privacy](#limitations-and-privacy)).
+Everything you replace is under `context/`. No code changes are needed. The
+tests use their own copy of the demo in `tests/fixtures/context/`, so they
+keep passing after you replace `context/`.
 
-The server doesn't parse DDL. The manifest's descriptions, grain and keys are
-what search uses, so write them carefully.
+1. **Remove the demo content:** delete `context/schema/customer/`,
+   `context/business-rules/customer/` and the files in `context/examples/demo/`.
+   Leave the empty `examples/approved/`, `pending/` and `rejected/` folders.
+2. **Add your DDL files** under `context/schema/`, one table per file, with exact
+   identifier casing (for example `context/schema/sales/SALES.ORDERS.sql`).
+   On Db2 for LUW, your DBA team can export table definitions with the
+   `db2look` utility, for example `db2look -d MYDB -z SALES -t ORDERS -e`. On
+   z/OS or IBM i, ask them for the equivalent DDL export. Header comments describing
+   grain and keys help the AI; the server returns the file as stored.
+3. **Add business-rule documents** (Markdown) under `context/business-rules/`.
+   They're optional at first: you can start with none and write rules where the
+   AI guesses wrong. Use `##` headings, because search returns one section at a time.
+4. **Rewrite `context/manifest.json`** using the template below.
+5. **Update the documentation** for your data: replace or remove the
+   [Demo schema](#demo-schema-fictional) section of this README and `docs/erd.md`.
+6. **Check and restart:** run `npm run build` and `npm run test:all`, then
+   restart your MCP client so it reloads the server. A manifest mistake is
+   reported with the offending field when a tool is first called.
+7. **Check that the data you put in `context/` is approved** for use with your
+   AI client (see [Privacy](#limitations-and-privacy)).
+
+### Manifest template
+
+```json
+{
+  "contextVersion": "2026-10-22.1",
+  "description": "Sales reporting context.",
+  "fictional": false,
+  "db2": { "platform": "unspecified", "version": null },
+  "domains": [
+    { "id": "sales", "name": "Sales", "description": "Orders and revenue." }
+  ],
+  "tables": [
+    {
+      "name": "SALES.ORDERS",
+      "domain": "sales",
+      "schemaPath": "schema/sales/SALES.ORDERS.sql",
+      "description": "One row per customer order. Use for order counts and revenue.",
+      "grain": "One row per order.",
+      "primaryKey": ["ORDER_ID"],
+      "tags": ["order", "orders", "revenue", "sales"]
+    }
+  ],
+  "documents": [
+    {
+      "id": "order-rules",
+      "domain": "sales",
+      "title": "Order and revenue rules",
+      "path": "business-rules/sales/order-rules.md",
+      "tags": ["revenue", "orders"]
+    }
+  ]
+}
+```
+
+| Field | Required? | Notes |
+|---|---|---|
+| `contextVersion` | Yes | Any text up to 64 characters. Change it whenever rules or schema change, so older examples are flagged as stale. |
+| `db2.platform` | Yes | `unspecified`, `luw`, `zos` or `ibmi` |
+| `db2.version`, `db2.notes`, `description`, `fictional` | No | `fictional` defaults to `false` |
+| `domains[]`: `id`, `name`, `description` | Yes (at least one domain) | `id` is lowercase `a-z`, `0-9`, `_`, `-` |
+| `tables[]`: `name`, `domain`, `schemaPath`, `description` | Yes | `name` is exactly `SCHEMA.TABLE`. `schemaPath` is relative to `context/`. |
+| `tables[]`: `grain`, `primaryKey`, `tags` | No, but recommended | Search uses `description`, `grain` and `tags`, so add the words people actually use (synonyms, abbreviations). |
+| `documents[]`: `id`, `domain`, `title`, `path` | Yes, but the list may be empty (`"documents": []`) | `path` is relative to `context/`. `tags` is optional. |
+
+The server doesn't parse DDL. The manifest's descriptions, grain, keys and
+tags are what search uses, so write them carefully.
 
 ---
 
@@ -264,6 +412,8 @@ An entity-relationship diagram of the demo customer tables is in [docs/erd.md](d
 | Symptom | Fix |
 |---|---|
 | `npm install` fails with `EPERM … symlink` | You're on exFAT/FAT. Keep `.npmrc` (`bin-links=false`). |
+| `npm test` says `Could not find '…/tests/unit/**/*.test.ts'` | Your Node is older than 22, which can't expand that pattern. Check `node --version`. With nvm: `nvm install 22 && nvm alias default 22`. |
+| Tests pass but the server returns old data | Restart your MCP client. It keeps the server process running until it's restarted. |
 | Client shows the server as failed | Run `npm run build`; check `dist/server.js` exists; run `node dist/server.js` and check stderr for errors (press Ctrl+C to exit). |
 | Claude Code doesn't list the server | Start `claude` in the project root; approve the project server; run `claude mcp reset-project-choices` if you declined earlier. |
 | VS Code shows `${workspaceFolder}` errors | Open the `sqlgenerator` folder itself as the workspace, not a parent folder. |
